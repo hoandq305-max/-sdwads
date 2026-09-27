@@ -1,0 +1,121 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local character
+local humanoid
+local root
+
+local soul
+local soulRoot
+local outOfBody = false
+
+local function setupCharacter(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	root = char:WaitForChild("HumanoidRootPart")
+end
+
+setupCharacter(player.Character or player.CharacterAdded:Wait())
+
+player.CharacterAdded:Connect(function(char)
+	setupCharacter(char)
+end)
+
+-- Tạo hồn
+local function createSoul()
+	if soul then
+		soul:Destroy()
+	end
+
+	soul = character:Clone()
+	soul.Name = "Soul"
+
+	-- Xóa Script/GUI/Tool trong hồn
+	for _, obj in ipairs(soul:GetDescendants()) do
+		if obj:IsA("Script")
+			or obj:IsA("LocalScript")
+			or obj:IsA("ModuleScript")
+			or obj:IsA("Tool") then
+			obj:Destroy()
+		elseif obj:IsA("BasePart") then
+			obj.Transparency = math.clamp(obj.Transparency + 0.5, 0, 1)
+			obj.CanCollide = false
+			obj.CanTouch = false
+			obj.CanQuery = false
+			obj.Anchored = false
+		end
+	end
+
+	soul.Parent = workspace
+
+	soulRoot = soul:FindFirstChild("HumanoidRootPart")
+
+	if soulRoot then
+		soulRoot.CFrame = root.CFrame
+	end
+end
+
+-- Xuất hồn
+local function leaveBody()
+	if outOfBody then return end
+
+	createSoul()
+	outOfBody = true
+
+	-- Khóa cơ thể
+	humanoid.WalkSpeed = 0
+	humanoid.JumpPower = 0
+	root.Anchored = true
+
+	-- Camera theo hồn
+	camera.CameraSubject = soul:FindFirstChildOfClass("Humanoid")
+
+	print("Đã xuất hồn")
+end
+
+-- Q: quay lại cơ thể
+local function returnToBody()
+	if not outOfBody then return end
+
+	outOfBody = false
+
+	if soul then
+		soul:Destroy()
+		soul = nil
+		soulRoot = nil
+	end
+
+	root.Anchored = false
+	humanoid.WalkSpeed = 16
+	humanoid.JumpPower = 50
+
+	camera.CameraSubject = humanoid
+
+	print("Đã quay lại cơ thể")
+end
+
+-- E: TP cơ thể đến hồn
+local function teleportBodyToSoul()
+	if not outOfBody or not soulRoot then return end
+
+	root.CFrame = soulRoot.CFrame + Vector3.new(0, 2, 0)
+
+	returnToBody()
+
+	print("Cơ thể đã dịch chuyển đến hồn")
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	if input.KeyCode == Enum.KeyCode.Q then
+		returnToBody()
+
+	elseif input.KeyCode == Enum.KeyCode.E then
+		teleportBodyToSoul()
+	end
+end)
